@@ -5,10 +5,12 @@
 namespace {
 FakeCan fakeCan;
 FakeUsb fakeUsb;
+unsigned long fakeTimeUs = 0x12345678;
 }
 CanDriver &twaiCanDriver() { return fakeCan; }
 UsbDriver &nativeUsbDriver() { return fakeUsb; }
-unsigned long micros() { return 0x12345678; }
+unsigned long micros() { return fakeTimeUs; }
+unsigned long millis() { return fakeTimeUs / 1000; }
 void delay(unsigned long) {}
 
 // Compile the actual sketch here so these tests exercise setup()/loop(), rather
@@ -22,6 +24,8 @@ struct Fixture {
     Fixture() {
         canDriver = FakeCan{};
         usbDriver = FakeUsb{};
+        bleLog = BleSerial{};
+        fakeTimeUs = 0x12345678;
         // Reset the sketch's protocol/queue state between independent tests.
         usbDriver.connected = false;
         loop();
@@ -118,11 +122,82 @@ void test_bootloader_request_stops_can_before_entering_loader() {
     TEST_ASSERT_EQUAL_UINT(2, f.usbDriver.incoming.size());
 }
 
+void test_ble_diagnostics_are_separate_from_usb_and_repeat_at_five_seconds() {
+    Fixture f;
+    TEST_ASSERT_EQUAL_STRING("GVRET S3 Logs", bleLog.name.c_str());
+    TEST_ASSERT_EQUAL_INT(-1, bleLog.ledPin);
+    loop();
+    TEST_ASSERT_TRUE(bleLog.lines.empty());
+    bleLog.linked = true;
+    loop();
+    TEST_ASSERT_EQUAL_UINT(1, bleLog.lines.size());
+    TEST_ASSERT_TRUE(bleLog.lines.back().find("500000 bit/s") != std::string::npos);
+    TEST_ASSERT_TRUE(f.usbDriver.outgoing.empty());
+    for (unsigned i = 0; i < 20; ++i) loop();
+    TEST_ASSERT_EQUAL_UINT(1, bleLog.lines.size());
+    fakeTimeUs += 5000000;
+    loop();
+    TEST_ASSERT_EQUAL_UINT(2, bleLog.lines.size());
+    bleLog.linked = false;
+    fakeTimeUs += 5000000;
+    loop();
+    TEST_ASSERT_EQUAL_UINT(2, bleLog.lines.size());
+    bleLog.linked = true;
+    loop();
+    TEST_ASSERT_EQUAL_UINT(3, bleLog.lines.size());
+}
+
+void test_ble_reports_effective_can_settings_and_rejection() {
+    Fixture f;
+    bleLog.linked = true;
+    f.usbDriver.input({0xF1, 5, 0x90, 0xD0, 3, 0xE0, 0, 0, 0, 0, 0, 0xF1, 6});
+    loop();
+    TEST_ASSERT_TRUE(bleLog.lines.front().find("250000 bit/s, listen-only") != std::string::npos);
+    TEST_ASSERT_TRUE(f.usbDriver.outgoing == Bytes({0xF1, 6, 0x11, 0x90, 0xD0, 3, 0,
+                                                   0, 0, 0, 0, 0}));
+    bleLog.lines.clear();
+    f.usbDriver.input({0xF1, 5, 0x40, 0xE2, 1, 0xC0, 0, 0, 0, 0, 0});
+    loop();
+    TEST_ASSERT_TRUE(bleLog.lines.front().find("configuration rejected: requested 123456") != std::string::npos);
+    TEST_ASSERT_TRUE(bleLog.lines.back().find("250000 bit/s, listen-only") != std::string::npos);
+}
+
+void test_ble_summarizes_frames_and_failed_tx_without_per_frame_logging() {
+    Fixture f;
+    bleLog.linked = true;
+    f.canDriver.writeOK = false;
+    f.usbDriver.input({0xF1, 0, 0x23, 1, 0, 0, 0, 0, 0});
+    for (unsigned i = 0; i < 20; ++i) f.canDriver.incoming.push_back(Frame{});
+    loop();
+    TEST_ASSERT_EQUAL_UINT(1, bleLog.lines.size());
+    TEST_ASSERT_TRUE(bleLog.lines.back().find("RX=20 TX=0 TX_failed=1") != std::string::npos);
+    TEST_ASSERT_TRUE(f.usbDriver.outgoing.empty());
+}
+
+void test_ble_formatting_is_bounded_and_pending_fragments_are_flushed() {
+    Fixture f;
+    bleLog.linked = true;
+    bleLog.pending = "previous fragment";
+    logMessage("message %u\r\n", 42u);
+    TEST_ASSERT_EQUAL_UINT(2, bleLog.lines.size());
+    TEST_ASSERT_EQUAL_STRING("previous fragment", bleLog.lines[0].c_str());
+    TEST_ASSERT_EQUAL_STRING("message 42\r\n", bleLog.lines[1].c_str());
+    const std::string longMessage(512, 'x');
+    logMessage("%s", longMessage.c_str());
+    TEST_ASSERT_EQUAL_UINT(191, bleLog.lines.back().size());
+    TEST_ASSERT_TRUE(bleLog.pending.empty());
+    TEST_ASSERT_TRUE(f.usbDriver.outgoing.empty());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_protocol_commands_reconfigure_real_bus_policy_and_read_it_back);
     RUN_TEST(test_live_capture_starts_after_e7_and_reconnect_requires_new_session);
     RUN_TEST(test_stalled_usb_backpressures_commands_and_eventually_replies_in_order);
     RUN_TEST(test_bootloader_request_stops_can_before_entering_loader);
+    RUN_TEST(test_ble_diagnostics_are_separate_from_usb_and_repeat_at_five_seconds);
+    RUN_TEST(test_ble_reports_effective_can_settings_and_rejection);
+    RUN_TEST(test_ble_summarizes_frames_and_failed_tx_without_per_frame_logging);
+    RUN_TEST(test_ble_formatting_is_bounded_and_pending_fragments_are_flushed);
     return UNITY_END();
 }

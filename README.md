@@ -96,6 +96,31 @@ port therefore fills a bounded queue and drops subsequent CAN packets whole;
 reopening may show a short backlog. Unplug/re-enumeration resets the protocol
 session. Incomplete commands expire after a 250 ms inter-byte gap.
 
+## BLE logging
+
+Application diagnostics use
+[`avinabmalla/ESP32_BleSerial@3.0.1`](https://github.com/avinabmalla/ESP32_BleSerial).
+The device advertises as **GVRET S3 Logs** using the Nordic UART Service:
+
+| Item | UUID |
+| --- | --- |
+| Service | `6e400001-b5a3-f393-e0a9-e50e24dcca9e` |
+| Device TX notifications | `6e400003-b5a3-f393-e0a9-e50e24dcca9e` |
+
+Connect with a BLE UART terminal and enable notifications on the TX
+characteristic. USB continues carrying GVRET frames while BLE shows the
+effective bitrate, enable/listen-only state, USB state, received/transmitted
+frame counts and failed transmit attempts. A snapshot is sent on connection,
+USB state changes, and every five seconds. CAN configuration changes and
+rejections are also logged. If the first notification arrives before your
+terminal subscribes, the next periodic snapshot supplies the current state.
+
+The `logMessage()` helper in `main.cpp` adds bounded, formatted application
+messages. It uses BleSerial's byte API and flushes each message to support the
+default ATT MTU. Messages are best effort while connected, with no retained
+history; individual CAN frames are not logged. BLE terminal input is not
+forwarded to CAN. This is application logging, not ROM boot or crash output.
+
 ## SavvyCAN
 
 1. Open **Connection → Open Connection Window**, then **Add New Device**.
@@ -120,7 +145,7 @@ also runtime operations. Listen-only neither transmits nor acknowledges frames;
 the other nodes must form a working bus themselves.
 
 No CAN FD, RTR representation, second bus, single-wire CAN, hardware I/O,
-storage, or network transport is advertised. RTR frames are discarded because
+storage, or network GVRET transport is advertised. RTR frames are discarded because
 the classic GVRET packet has no RTR flag. CAN timestamps are `micros()` at
 dequeue, not hardware arrival timestamps, and wrap every ~71.6 minutes as in GVRET.
 Capture is best effort: driver/USB queues are finite, full TX queues reject
