@@ -63,15 +63,12 @@ jobs:
             0x8000 .pio/build/esp32-s3-devkitc-1/partitions.bin \
             0xe000 "$HOME/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin" \
             0x10000 .pio/build/esp32-s3-devkitc-1/firmware.bin
-          cp docs/FLASHING.md dist/FLASHING.md
-          cd dist
-          sha256sum gvret-s3-factory.bin > SHA256SUMS
 
       - name: Upload factory firmware
         if: matrix.environment == 'esp32-s3-devkitc-1'
         uses: actions/upload-artifact@v7
         with:
-          name: gvret-s3-factory-${{ github.sha }}
-          path: dist/
+          path: dist/gvret-s3-factory.bin
+          archive: false
           if-no-files-found: error
           retention-days: 90

@@ -18,14 +18,11 @@ application-only `firmware.bin` is insufficient to boot an erased device.
 ## Download
 
 Open the repository's **Actions** tab, select a **Build and test** run, and
-download the `gvret-s3-factory-<commit>` artifact. Extract it to obtain:
+download the `gvret-s3-factory.bin` artifact. It downloads directly as a binary;
+there is nothing to extract.
 
-- `gvret-s3-factory.bin`
-- `SHA256SUMS`
-- These instructions (`FLASHING.md`)
-
-Use a run where both the native tests and firmware build passed. The artifact
-name identifies the exact revision built; artifacts are retained for 90 days.
+Use a run where both the native tests and firmware build passed. The workflow
+run identifies the exact revision built; artifacts are retained for 90 days.
 
 ## Program an erased device
 
@@ -35,17 +32,13 @@ in download mode; the application's 1200-baud request handler does not exist on
 erased flash. A UART programmer with automatic EN/GPIO0 control can also enter
 download mode without access to the board's buttons.
 
-Install esptool, then run this from the extracted artifact directory, replacing
+Install esptool, then run this from the directory containing the binary, replacing
 `PORT` with the ROM download port (`COMx`, `/dev/ttyACM0`, or `/dev/cu.usbmodem...`):
 
 ```sh
 python -m pip install "esptool>=4.9,<5"
 python -m esptool --chip esp32s3 --port PORT --baud 460800 write_flash 0x0 gvret-s3-factory.bin
 ```
-
-You can verify the file before flashing with `sha256sum -c SHA256SUMS` on Linux
-or `shasum -a 256 -c SHA256SUMS` on macOS. On Windows, compare
-`Get-FileHash .\gvret-s3-factory.bin -Algorithm SHA256` with `SHA256SUMS`.
 
 Esptool requests a reset after programming. If the application port does not
 appear, power-cycle the device. The application's USB CDC port may have a
