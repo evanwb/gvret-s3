@@ -17,6 +17,10 @@ application-only `firmware.bin` is insufficient to boot an erased device.
 
 ## Download
 
+You can also [install through your browser](https://evanwb.github.io/gvret-s3/)
+using ESP Web Tools. If GVRET is running, first use the page's **Enter
+bootloader** button, then select the new ROM port with **Install firmware**.
+
 Open the repository's **Actions** tab, select a **Build and test** run, and
 download the `gvret-s3-factory.bin` artifact. It downloads directly as a binary;
 there is nothing to extract.

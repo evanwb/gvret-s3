@@ -50,6 +50,15 @@ jobs:
       - name: Run check
         run: ${{ matrix.command }}
 
+      - uses: actions/setup-node@v6
+        if: matrix.environment == 'native'
+        with:
+          node-version: '24'
+
+      - name: Test web installer
+        if: matrix.environment == 'native'
+        run: node --test test/web_installer.test.mjs
+
       - name: Create factory flash image
         if: matrix.environment == 'esp32-s3-devkitc-1'
         run: |
@@ -72,3 +81,43 @@ jobs:
           archive: false
           if-no-files-found: error
           retention-days: 90
+
+      - name: Prepare web installer
+        if: >-
+          matrix.environment == 'esp32-s3-devkitc-1' &&
+          github.event_name != 'pull_request' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: python scripts/build_installer.py --firmware dist/gvret-s3-factory.bin --version "$GITHUB_SHA"
+
+      - name: Upload Pages site
+        if: >-
+          matrix.environment == 'esp32-s3-devkitc-1' &&
+          github.event_name != 'pull_request' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site/
+
+  pages:
+    name: Publish web installer
+    needs: check
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v6
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

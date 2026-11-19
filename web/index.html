@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="Install GVRET S3 firmware on your ESP32-S3 CAN adapter directly from your browser.">
+    <title>Install GVRET S3</title>
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./installer.mjs"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="GVRET S3 home">
+        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+          <rect x="5" y="7" width="22" height="18" rx="5" fill="currentColor"/>
+          <path d="M11 13h4v6h-4m10-6h-4v6h4M12 3v4m8-4v4M12 25v4m8-4v4" fill="none" stroke="#fff" stroke-width="2"/>
+        </svg>
+        GVRET <span>S3</span>
+      </a>
+      <a href="https://github.com/evanwb/gvret-s3">View on GitHub</a>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <p class="eyebrow">CAN interface · Browser installer</p>
+        <h1 id="title">Install GVRET S3.</h1>
+        <p class="lede">Turn your ESP32-S3 into a native USB CAN interface for
+          SavvyCAN. Flash the latest tested firmware right here.</p>
+        <div class="specs" aria-label="Supported hardware">
+          <span>ESP32-S3-DevKitC-1</span><span>8 MB flash</span><span>Classic CAN</span>
+        </div>
+      </section>
+
+      <section class="installer" aria-labelledby="install-title">
+        <div class="panel-heading">
+          <h2 id="install-title">Connect your adapter</h2>
+          <a id="build" class="build" hidden target="_blank" rel="noopener"></a>
+        </div>
+        <ol class="steps">
+          <li>Close SavvyCAN and any serial monitors. Connect the board with a USB data cable.</li>
+          <li>If GVRET is already running, select <strong>Enter bootloader</strong> and choose its application port.</li>
+          <li>Select <strong>Install firmware</strong> and choose the ROM download port. Its name may change after the restart.</li>
+        </ol>
+
+        <div class="actions">
+          <button id="bootloader" class="secondary" type="button" disabled>Enter bootloader</button>
+          <esp-web-install-button id="install" manifest="./manifest.json" hidden>
+            <button id="install-button" class="primary" type="button" slot="activate" disabled>Install firmware</button>
+            <span class="notice" slot="unsupported">Use a browser with Web Serial, such as desktop Chrome or Edge.</span>
+            <span class="notice" slot="not-allowed">Open this installer over HTTPS or on localhost.</span>
+          </esp-web-install-button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite">Loading the firmware installer…</p>
+        <noscript><p class="notice">Enable JavaScript to use the browser installer. You can also download and flash the binary manually.</p></noscript>
+        <p class="hint">Already in download mode or using erased flash? Go straight to Install firmware.</p>
+      </section>
+
+      <section class="details" aria-label="Firmware details and help">
+        <article>
+          <h2>Ready for SavvyCAN</h2>
+          <dl>
+            <div><dt>Default bitrate</dt><dd>500 kbit/s</dd></div>
+            <div><dt>CAN pins</dt><dd>TX GPIO5 · RX GPIO4</dd></div>
+            <div><dt>Transceiver</dt><dd>External, 3.3 V logic</dd></div>
+          </dl>
+          <p>After installation, connect SavvyCAN to the native USB application
+            port using <strong>Serial Connection (GVRET)</strong>.</p>
+        </article>
+        <article>
+          <h2>About this install</h2>
+          <p>The full flash image includes the bootloader and partition table,
+            so it also works with erased flash.</p>
+          <p>Enter bootloader sends a 1200-baud request to running GVRET firmware.
+            Other firmware needs its own way to enter download mode.</p>
+          <p>If the application port does not appear after installation, power-cycle the device.</p>
+          <a href="https://github.com/evanwb/gvret-s3/blob/main/docs/FLASHING.md">Manual flashing instructions</a>
+        </article>
+      </section>
+
+      <footer>
+        <span>Flashing powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a></span>
+        <a id="download" href="./gvret-s3-factory.bin" download hidden>Download firmware .bin</a>
+      </footer>
+    </main>
+  </body>
+</html>
